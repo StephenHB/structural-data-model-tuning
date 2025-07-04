@@ -61,6 +61,11 @@ Clean-Room Finetune TabPFN
 - Include example scripts and notebooks for common workflows.
 - Document all configuration options and expected data formats.
 
+### 0. Synthetic Data Generation for Fine-Tuning
+- Generate or simulate tabular data suitable for use in the finetuning pipeline.
+- Specify data schema, feature distributions, and ensure compatibility with the PRD workflow.
+- Document the process and provide scripts or notebooks for reproducibility.
+
 ---
 
 ## Acceptance Criteria

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PRD Kanban Dashboard</title>
+  <style>
+    body { font-family: sans-serif; }
+    .board { display: flex; gap: 20px; }
+    .column { background: #f4f4f4; padding: 10px; width: 240px; min-height: 300px; border-radius: 8px; }
+    .task { background: #fff; margin: 8px 0; padding: 8px; border-radius: 4px; cursor: grab; box-shadow: 0 1px 3px rgba(0,0,0,0.07); position: relative; }
+    .task-title { font-weight: bold; cursor: pointer; }
+    .progress-bar { height: 8px; background: #e0e0e0; border-radius: 4px; margin: 6px 0; }
+    .progress { height: 8px; background: #4caf50; border-radius: 4px; }
+    .details { display: none; background: #f9f9f9; border-radius: 4px; padding: 8px; margin-top: 6px; font-size: 0.95em; }
+    .task.open .details { display: block; }
+    .subtasks { margin: 6px 0 0 0; padding-left: 18px; }
+    .subtasks li { font-size: 0.95em; }
+    .mermaid-container { margin-top: 40px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+    .timeline { font-size: 0.95em; color: #555; margin-top: 4px; }
+    .deps { font-size: 0.95em; color: #888; margin-top: 4px; }
+    .task.parent { background: #e3f2fd; border-left: 6px solid #1976d2; }
+    .task.child { background: #fffde7; border-left: 6px solid #fbc02d; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <h2>PRD Kanban Dashboard</h2>
+  <div class="board" id="kanban-board"></div>
+  <div class="mermaid-container">
+    <h2>Task Dependency Graph</h2>
+    <div class="mermaid" id="mermaid-graph"></div>
+  </div>
+  <script>
+    // --- Static PRD Data ---
+    const tasks = [
+      {
+        id: 'S',
+        title: 'Create Synthetic Data for Fine-Tuning',
+        description: 'Generate or simulate tabular data suitable for use in the finetuning pipeline. Specify data schema, feature distributions, and ensure compatibility with the PRD workflow. Document the process and provide scripts or notebooks for reproducibility.',
+        subtasks: [],
+        percent: 0,
+        timeline: '2025-06-29 to 2025-07-01',
+        dependencies: [],
+        status: 'todo',
+        isParent: true
+      },
+      {
+        id: 'S1',
+        title: 'Define schema',
+        description: 'Define the data schema matching the finetuning requirements (features, target, types).',
+        subtasks: [],
+        percent: 0,
+        timeline: '2025-06-29',
+        dependencies: ['S'],
+        status: 'todo',
+        isChild: true,
+        parent: 'S'
+      },
+      {
+        id: 'S2',
+        title: 'Generate data',
+        description: 'Use Python (numpy, pandas, sklearn.datasets) to generate synthetic data.',
+        subtasks: [],
+        percent: 0,
+        timeline: '2025-06-30',
+        dependencies: ['S1'],
+        status: 'todo',
+        isChild: true,
+        parent: 'S'
+      },
+      {
+        id: 'S3',
+        title: 'Document process',
+        description: 'Document the data generation process, schema, and assumptions in markdown.',
+        subtasks: [],
+        percent: 0,
+        timeline: '2025-07-01',
+        dependencies: ['S2'],
+        status: 'todo',
+        isChild: true,
+        parent: 'S'
+      },
+      {
+        id: 'S4',
+        title: 'Provide script/notebook',
+        description: 'Provide a script or notebook for reproducibility.',
+        subtasks: [],
+        percent: 0,
+        timeline: '2025-07-01',
+        dependencies: ['S3'],
+        status: 'todo',
+        isChild: true,
+        parent: 'S'
+      },
+      {
+        id: 'A',
+        title: 'Finetuning TabPFN',
+        description: 'Enable finetuning of TabPFN models on a single tabular dataset. Support for loading a base TabPFN model and saving the finetuned model checkpoint.',
+        subtasks: ['Load base model', 'Prepare dataset', 'Save checkpoint'],
+        percent: 33,
+        timeline: '2025-07-01 to 2025-07-03',
+        dependencies: [],
+        status: 'todo'
+      },
+      {
+        id: 'B',
+        title: 'Minimal Hyperparameter Interface',
+        description: 'Expose only essential hyperparameters: learning rate, batch size. Provide sensible defaults and allow user override.',
+        subtasks: ['Set learning rate', 'Set batch size'],
+        percent: 0,
+        timeline: '2025-07-03 to 2025-07-04',
+        dependencies: ['A'],
+        status: 'todo'
+      },
+      {
+        id: 'C',
+        title: 'Adaptive Early Stopping',
+        description: 'Implement early stopping based on validation loss improvement. Support time-based early stopping (user-defined time limit).',
+        subtasks: ['Validation loss monitor', 'Time-based stop'],
+        percent: 0,
+        timeline: '2025-07-04 to 2025-07-05',
+        dependencies: ['B'],
+        status: 'todo'
+      },
+      {
+        id: 'D',
+        title: 'Logging',
+        description: 'Support both offline (local file/plot) and online (wandb) logging of training metrics and curves.',
+        subtasks: ['Offline logging', 'Wandb integration'],
+        percent: 0,
+        timeline: '2025-07-05 to 2025-07-06',
+        dependencies: ['C'],
+        status: 'todo'
+      },
+      {
+        id: 'E',
+        title: 'Task Flexibility',
+        description: 'Support binary classification, multiclass classification, and regression tasks.',
+        subtasks: ['Binary', 'Multiclass', 'Regression'],
+        percent: 0,
+        timeline: '2025-07-06 to 2025-07-07',
+        dependencies: ['D'],
+        status: 'todo'
+      },
+      {
+        id: 'F',
+        title: 'Mixed Precision, Gradient Scaling, and Clipping',
+        description: 'Enable mixed precision training for performance. Implement gradient scaling and clipping to stabilize training.',
+        subtasks: ['Mixed precision', 'Gradient scaling', 'Clipping'],
+        percent: 0,
+        timeline: '2025-07-07 to 2025-07-08',
+        dependencies: ['E'],
+        status: 'todo'
+      },
+      {
+        id: 'G',
+        title: 'Extensibility for AutoML',
+        description: 'Provide a clean API for integration with AutoML pipelines. Allow programmatic configuration and execution.',
+        subtasks: ['API design', 'Pipeline integration'],
+        percent: 0,
+        timeline: '2025-07-08 to 2025-07-09',
+        dependencies: ['F'],
+        status: 'todo'
+      },
+      {
+        id: 'H',
+        title: 'Robust Error Handling',
+        description: 'Validate user inputs and configuration. Provide clear error messages and logging for debugging.',
+        subtasks: ['Input validation', 'Error messages'],
+        percent: 0,
+        timeline: '2025-07-09 to 2025-07-10',
+        dependencies: ['G'],
+        status: 'todo'
+      },
+      {
+        id: 'I',
+        title: 'Documentation and Examples',
+        description: 'Include example scripts and notebooks for common workflows. Document all configuration options and expected data formats.',
+        subtasks: ['Example scripts', 'Notebooks', 'Config docs'],
+        percent: 0,
+        timeline: '2025-07-10 to 2025-07-11',
+        dependencies: ['H'],
+        status: 'todo'
+      }
+    ];
+
+    const columns = [
+      { id: 'todo', name: 'To Do' },
+      { id: 'inprogress', name: 'In Progress' },
+      { id: 'done', name: 'Done' }
+    ];
+
+    // --- Render Kanban Board ---
+    function renderBoard() {
+      const board = document.getElementById('kanban-board');
+      board.innerHTML = '';
+      columns.forEach(col => {
+        const colDiv = document.createElement('div');
+        colDiv.className = 'column';
+        colDiv.id = col.id;
+        const h3 = document.createElement('h3');
+        h3.textContent = col.name;
+        colDiv.appendChild(h3);
+        tasks.filter(t => t.status === col.id).forEach(task => {
+          const taskDiv = document.createElement('div');
+          let taskClass = 'task';
+          if (task.isParent) taskClass += ' parent';
+          if (task.isChild) taskClass += ' child';
+          taskDiv.className = taskClass;
+          taskDiv.setAttribute('data-id', task.id);
+          taskDiv.innerHTML = `
+            <div class="task-title">${task.title}</div>
+            <div class="progress-bar"><div class="progress" style="width:${task.percent}%;"></div></div>
+            <div class="timeline">Timeline: ${task.timeline}</div>
+            <div class="deps">Depends on: ${task.dependencies.map(d => tasks.find(t => t.id === d)?.title).filter(Boolean).join(', ') || 'None'}</div>
+            <div class="details">
+              <div><b>Description:</b> ${task.description}</div>
+              <div><b>Percent Complete:</b> ${task.percent}%</div>
+            </div>
+          `;
+          taskDiv.querySelector('.task-title').onclick = () => {
+            taskDiv.classList.toggle('open');
+          };
+          colDiv.appendChild(taskDiv);
+        });
+        board.appendChild(colDiv);
+      });
+    }
+
+    // --- Drag and Drop ---
+    function setupDnD() {
+      columns.forEach(col => {
+        new Sortable(document.getElementById(col.id), {
+          group: 'kanban',
+          animation: 150,
+          onAdd: function (evt) {
+            const taskId = evt.item.getAttribute('data-id');
+            const newStatus = evt.to.id;
+            const task = tasks.find(t => t.id === taskId);
+            if (task) task.status = newStatus;
+            renderBoard();
+            setupDnD();
+            renderMermaid();
+          }
+        });
+      });
+    }
+
+    // --- Mermaid Dependency Graph ---
+    function renderMermaid() {
+      let graph = 'graph TD\n';
+      // Legend
+      graph += '  subgraph Legend\n';
+      graph += '    A1[Parent Task]:::parentStyle\n';
+      graph += '    A2[Child Task]:::childStyle\n';
+      graph += '    A1 -.-> A2\n';
+      graph += '    A2 --> B[Dependency]:::depStyle\n';
+      graph += '  end\n';
+      // Actual tasks
+      tasks.forEach(task => {
+        let style = '';
+        if (task.isParent) style = ':::parentStyle';
+        if (task.isChild) style = ':::childStyle';
+        graph += `  ${task.id}[${task.title}]${style}\n`;
+      });
+      tasks.forEach(task => {
+        task.dependencies.forEach(dep => {
+          graph += `  ${dep} --> ${task.id}\n`;
+        });
+        if (task.isChild && task.parent) {
+          graph += `  ${task.parent} -.-> ${task.id}\n`;
+        }
+      });
+      // Styles
+      graph += '  classDef parentStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px;\n';
+      graph += '  classDef childStyle fill:#fffde7,stroke:#fbc02d,stroke-width:2px;\n';
+      graph += '  classDef depStyle fill:#fff,stroke:#4caf50,stroke-width:2px;\n';
+      document.getElementById('mermaid-graph').innerHTML = graph;
+      mermaid.init(undefined, document.getElementById('mermaid-graph'));
+    }
+
+    // --- Initial Render ---
+    renderBoard();
+    setupDnD();
+    renderMermaid();
+  </script>
+</body>
+</html> 
